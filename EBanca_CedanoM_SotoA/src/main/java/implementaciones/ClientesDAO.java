@@ -6,6 +6,7 @@
 package implementaciones;
 
 import dominio.Cliente;
+import dominio.Direccion;
 import excepciones.PersistenciaException;
 import interfaces.IClientesDAO;
 import interfaces.IConexionBD;
@@ -66,19 +67,43 @@ public class ClientesDAO implements IClientesDAO {
     }
 
     @Override
-    public Cliente insertar(Cliente cliente) throws PersistenciaException {
+    public Cliente insertar(Cliente cliente, Direccion direccion) throws PersistenciaException {
+        String sqlD = "insert into direcciones("
+                + "calle, numero, colonia)"
+                + "values (?,?,?)";
+        
         String sql = "insert into clientes("
-                + "nombres, ap_paterno, ap_materno, codigo_direccion)"
-                + "values (?,?,?,?)";
-        try (
+                + "nombre, apellidoPaterno, apellidoMaterno, codigoDireccion, fechaNacimiento, nip)"
+                + "values (?,?,?,?,?,?)";
+        try (              
                 Connection conexion = this.generadorConexiones.crearConexion();
+                PreparedStatement comando2 = conexion.prepareStatement(
+                        sqlD, Statement.RETURN_GENERATED_KEYS);
                 PreparedStatement comando = conexion.prepareStatement(
-                        sql, Statement.RETURN_GENERATED_KEYS);) {
+                        sql, Statement.RETURN_GENERATED_KEYS);
+                ) {
+            
+            comando2.setString(1, direccion.getCalle());
+            comando2.setInt(2, direccion.getNumeroCasa());
+            comando2.setString(3, direccion.getColonia());
+            comando2.executeUpdate();
+            // ResultSet: objeto que devuelve la base al) consultar
+            ResultSet llavesGeneradas1 = comando2.getGeneratedKeys();
+            if (llavesGeneradas1.next()) {
+                Integer llavePrimaria = llavesGeneradas1.getInt(1);
+                cliente.setCodigoDireccion(llavePrimaria);
+            }
+            
+            
+            
             comando.setString(1, cliente.getNombres());
             comando.setString(2, cliente.getApPaterno());
             comando.setString(3, cliente.getApMaterno());
             comando.setInt(4, cliente.getCodigoDireccion());
+            comando.setDate(5, java.sql.Date.valueOf("2002-2-2"));
+            comando.setInt(6, cliente.getNip());
             comando.executeUpdate();
+
             // ResultSet: objeto que devuelve la base al consultar
             ResultSet llavesGeneradas = comando.getGeneratedKeys();
             if (llavesGeneradas.next()) {
@@ -91,7 +116,8 @@ public class ClientesDAO implements IClientesDAO {
         } catch (SQLException ex) {
             LOG.log(Level.SEVERE, ex.getMessage());
             throw new PersistenciaException("No fue posible registrar al cliente");
-        } 
+        }
+        
     }
 
     @Override
@@ -140,4 +166,6 @@ public class ClientesDAO implements IClientesDAO {
             throw new PersistenciaException("No se pudo consultar la lista de clientes");
         }
     }
+
+
 }
